@@ -1,43 +1,36 @@
-(function($){
-	if ( $('body').hasClass('language-chooser') === false ) {
-		return;
-	}
+/**
+ * @output wp-admin/js/language-chooser.js
+ */
 
-	var mouseDown = 0,
-		$fieldset = $('fieldset');
+jQuery( function($) {
+/*
+ * Set the correct translation to the continue button and show a spinner
+ * when downloading a language.
+ */
+var select = $( '#language' ),
+	submit = $( '#language-continue' );
 
-	// simple way to check if mousebutton is depressed while accounting for multiple mouse buttons being used independently
-	document.body.onmousedown = function() {
-		++mouseDown;
-	};
-	document.body.onmouseup = function() {
-		--mouseDown;
-	};
+if ( ! $( 'body' ).hasClass( 'language-chooser' ) ) {
+	return;
+}
 
+select.focus().on( 'change', function() {
 	/*
-		we can't rely upon the focusout event
-		since clicking on a label triggers it
-	*/
-	function maybeRemoveFieldsetFocus(){
-		if (mouseDown) {
-			setTimeout( maybeRemoveFieldsetFocus, 50);
-			return;
-		}
-		if ( $(':focus').hasClass('language-chooser-input') !== true ) {
-			$fieldset.removeClass('focus');
-		}
+	 * When a language is selected, set matching translation to continue button
+	 * and attach the language attribute.
+	 */
+	var option = select.children( 'option:selected' );
+	submit.attr({
+		value: option.data( 'continue' ),
+		lang: option.attr( 'lang' )
+	});
+});
+
+$( 'form' ).submit( function() {
+	// Show spinner for languages that need to be downloaded.
+	if ( ! select.children( 'option:selected' ).data( 'installed' ) ) {
+		$( this ).find( '.step .spinner' ).css( 'visibility', 'visible' );
 	}
+});
 
-	$fieldset.focusin( function() {
-		$(this).addClass('focus');
-	});
-
-	$fieldset.focusout( function() {
-		setTimeout( maybeRemoveFieldsetFocus, 50);
-	});
-
-	$('form').submit(function(){
-		$(this).find('.step .spinner').css('visibility','visible');
-	});
-
-})(jQuery);
+});
