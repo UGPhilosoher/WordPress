@@ -8,7 +8,7 @@
  * Copyright 2004-2010 The Horde Project (http://www.horde.org/)
  *
  * See the enclosed file COPYING for license information (LGPL). If you did
- * not receive this file, see http://opensource.org/licenses/lgpl-license.php.
+ * not receive this file, see https://opensource.org/license/lgpl-2-1/.
  *
  * @package Text_Diff
  */
@@ -33,7 +33,7 @@ class Text_Diff_Renderer {
     /**
      * Constructor.
      */
-    function Text_Diff_Renderer($params = array())
+    function __construct( $params = array() )
     {
         foreach ($params as $param => $value) {
             $v = '_' . $param;
@@ -42,6 +42,13 @@ class Text_Diff_Renderer {
             }
         }
     }
+
+	/**
+	 * PHP4 constructor.
+	 */
+	public function Text_Diff_Renderer( $params = array() ) {
+		self::__construct( $params );
+	}
 
     /**
      * Get any renderer parameters.
@@ -83,7 +90,7 @@ class Text_Diff_Renderer {
             /* If these are unchanged (copied) lines, and we want to keep
              * leading or trailing context lines, extract them from the copy
              * block. */
-            if (is_a($edit, 'Text_Diff_Op_copy')) {
+            if ($edit instanceof Text_Diff_Op_copy) {
                 /* Do we have any diff blocks yet? */
                 if (is_array($block)) {
                     /* How many lines to keep as context from the copy

@@ -1,6 +1,18 @@
-/* globals _wpCustomizeHeader, _ */
+/**
+ * @output wp-includes/js/customize-models.js
+ */
+
+/* global _wpCustomizeHeader */
+
+/**
+ * The WordPress Customizer models API.
+ *
+ * @param {JQueryStatic} $  The jQuery object.
+ * @param {Object}       wp The WordPress global object.
+ */
 (function( $, wp ) {
 	var api = wp.customize;
+	/** @namespace wp.customize.HeaderTool */
 	api.HeaderTool = {};
 
 
@@ -8,15 +20,23 @@
 	 * wp.customize.HeaderTool.ImageModel
 	 *
 	 * A header image. This is where saves via the Customizer API are
-	 * abstracted away, plus our own AJAX calls to add images to and remove
+	 * abstracted away, plus our own Ajax calls to add images to and remove
 	 * images from the user's recently uploaded images setting on the server.
 	 * These calls are made regardless of whether the user actually saves new
 	 * Customizer settings.
 	 *
-	 * @constructor
+	 * @memberOf wp.customize.HeaderTool
+	 * @alias wp.customize.HeaderTool.ImageModel
+	 *
+	 * @class
 	 * @augments Backbone.Model
 	 */
-	api.HeaderTool.ImageModel = Backbone.Model.extend({
+	api.HeaderTool.ImageModel = Backbone.Model.extend(/** @lends wp.customize.HeaderTool.ImageModel.prototype */{
+		/**
+		 * Returns the default attributes for a header image.
+		 *
+		 * @return {Object} Default attributes.
+		 */
 		defaults: function() {
 			return {
 				header: {
@@ -31,22 +51,31 @@
 			};
 		},
 
+		/**
+		 * Initializes the model, hiding the header when asked to.
+		 */
 		initialize: function() {
 			this.on('hide', this.hide, this);
 		},
 
+		/**
+		 * Hides the header image, removing it from the site.
+		 */
 		hide: function() {
 			this.set('choice', '');
 			api('header_image').set('remove-header');
 			api('header_image_data').set('remove-header');
 		},
 
+		/**
+		 * Removes the image, hiding the header first if it is the current one.
+		 */
 		destroy: function() {
 			var data = this.get('header'),
 				curr = api.HeaderTool.currentHeader.get('header').attachment_id;
 
-			// If the image we're removing is also the current header, unset
-			// the latter
+			// If the image we're removing is also the current header,
+			// unset the latter.
 			if (curr && data.attachment_id === curr) {
 				api.HeaderTool.currentHeader.trigger('hide');
 			}
@@ -61,6 +90,9 @@
 			this.trigger('destroy', this, this.collection);
 		},
 
+		/**
+		 * Makes this image the current header image.
+		 */
 		save: function() {
 			if (this.get('random')) {
 				api('header_image').set(this.get('header').random);
@@ -78,6 +110,9 @@
 			api.HeaderTool.combinedList.trigger('control:setImage', this);
 		},
 
+		/**
+		 * Adds the image to the theme's uploaded headers.
+		 */
 		importImage: function() {
 			var data = this.get('header');
 			if (data.attachment_id === undefined) {
@@ -92,6 +127,11 @@
 			} );
 		},
 
+		/**
+		 * Returns whether the image needs cropping for this theme.
+		 *
+		 * @return {boolean} Whether the image should be cropped.
+		 */
 		shouldBeCropped: function() {
 			if (this.get('themeFlexWidth') === true &&
 						this.get('themeFlexHeight') === true) {
@@ -125,38 +165,50 @@
 	/**
 	 * wp.customize.HeaderTool.ChoiceList
 	 *
-	 * @constructor
+	 * @memberOf wp.customize.HeaderTool
+	 * @alias wp.customize.HeaderTool.ChoiceList
+	 *
+	 * @class
 	 * @augments Backbone.Collection
 	 */
 	api.HeaderTool.ChoiceList = Backbone.Collection.extend({
 		model: api.HeaderTool.ImageModel,
 
-		// Ordered from most recently used to least
+		/**
+		 * Orders the collection from most recently used to least.
+		 *
+		 * @param {Backbone.Model} model The model to sort.
+		 * @return {number} The sort order.
+		 */
 		comparator: function(model) {
 			return -model.get('header').timestamp;
 		},
 
+		/**
+		 * Initializes the collection from the uploaded header images.
+		 */
 		initialize: function() {
 			var current = api.HeaderTool.currentHeader.get('choice').replace(/^https?:\/\//, ''),
 				isRandom = this.isRandomChoice(api.get().header_image);
 
-			// Overridable by an extending class
+			// Overridable by an extending class.
 			if (!this.type) {
 				this.type = 'uploaded';
 			}
 
-			// Overridable by an extending class
+			// Overridable by an extending class.
 			if (typeof this.data === 'undefined') {
 				this.data = _wpCustomizeHeader.uploads;
 			}
 
 			if (isRandom) {
-				// So that when adding data we don't hide regular images
+				// So that when adding data we don't hide regular images.
 				current = api.get().header_image;
 			}
 
 			this.on('control:setImage', this.setImage, this);
 			this.on('control:removeImage', this.removeImage, this);
+			this.on('add', this.maybeRemoveOldCrop, this);
 			this.on('add', this.maybeAddRandomChoice, this);
 
 			_.each(this.data, function(elt, index) {
@@ -180,12 +232,44 @@
 			}
 		},
 
+		/**
+		 * Removes an image's previous crop once it has been replaced.
+		 *
+		 * @param {Backbone.Model} model Model.
+		 */
+		maybeRemoveOldCrop: function( model ) {
+			var newID = model.get( 'header' ).attachment_id || false,
+			 	oldCrop;
+
+			// Bail early if we don't have a new attachment ID.
+			if ( ! newID ) {
+				return;
+			}
+
+			oldCrop = this.find( function( item ) {
+				return ( item.cid !== model.cid && item.get( 'header' ).attachment_id === newID );
+			} );
+
+			// If we found an old crop, remove it from the collection.
+			if ( oldCrop ) {
+				this.remove( oldCrop );
+			}
+		},
+
+		/**
+		 * Adds the random choice once a single image is left.
+		 */
 		maybeAddRandomChoice: function() {
 			if (this.size() === 1) {
 				this.addRandomChoice();
 			}
 		},
 
+		/**
+		 * Adds the random image choice to the collection.
+		 *
+		 * @param {string} initialChoice Initial choice.
+		 */
 		addRandomChoice: function(initialChoice) {
 			var isRandomSameType = RegExp(this.type).test(initialChoice),
 				randomChoice = 'random-' + this.type + '-image';
@@ -203,14 +287,30 @@
 			});
 		},
 
+		/**
+		 * Returns whether a choice is one of the random image choices.
+		 *
+		 * @param {string} choice Choice.
+		 * @return {boolean} Whether the choice is random.
+		 */
 		isRandomChoice: function(choice) {
 			return (/^random-(uploaded|default)-image$/).test(choice);
 		},
 
+		/**
+		 * Returns whether the list title should be hidden.
+		 *
+		 * @return {boolean} Whether the title should be hidden.
+		 */
 		shouldHideTitle: function() {
 			return this.size() < 2;
 		},
 
+		/**
+		 * Marks a single image as the selected one.
+		 *
+		 * @param {Backbone.Model} model Model.
+		 */
 		setImage: function(model) {
 			this.each(function(m) {
 				m.set('selected', false);
@@ -221,6 +321,9 @@
 			}
 		},
 
+		/**
+		 * Clears the selection.
+		 */
 		removeImage: function() {
 			this.each(function(m) {
 				m.set('selected', false);
@@ -232,11 +335,17 @@
 	/**
 	 * wp.customize.HeaderTool.DefaultsList
 	 *
-	 * @constructor
+	 * @memberOf wp.customize.HeaderTool
+	 * @alias wp.customize.HeaderTool.DefaultsList
+	 *
+	 * @class
 	 * @augments wp.customize.HeaderTool.ChoiceList
 	 * @augments Backbone.Collection
 	 */
 	api.HeaderTool.DefaultsList = api.HeaderTool.ChoiceList.extend({
+		/**
+		 * Initializes the collection from the theme's default header images.
+		 */
 		initialize: function() {
 			this.type = 'default';
 			this.data = _wpCustomizeHeader.defaults;

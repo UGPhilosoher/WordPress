@@ -1,13 +1,22 @@
-/*globals window, document, jQuery, _, Backbone, _wpmejsSettings */
+/* global _wpmejsSettings, MediaElementPlayer */
 
 (function ($, _, Backbone) {
-	"use strict";
+	'use strict';
 
-	var WPPlaylistView = Backbone.View.extend({
+	/** @namespace wp */
+	window.wp = window.wp || {};
+
+	var WPPlaylistView = Backbone.View.extend(/** @lends WPPlaylistView.prototype */{
+		/**
+		 * @constructs
+		 *
+		 * @param {Object} options          The options to create this playlist view with.
+		 * @param {Object} options.metadata The metadata
+		 */
 		initialize : function (options) {
 			this.index = 0;
 			this.settings = {};
-			this.data = options.metadata || $.parseJSON( this.$('script').html() );
+			this.data = options.metadata || $.parseJSON( this.$('script.wp-playlist-script').html() );
 			this.playerNode = this.$( this.data.type );
 
 			this.tracks = new Backbone.Collection( this.data.tracks );
@@ -31,7 +40,7 @@
 			_.bindAll( this, 'bindPlayer', 'bindResetPlayer', 'setPlayer', 'ended', 'clickTrack' );
 
 			if ( ! _.isUndefined( window._wpmejsSettings ) ) {
-				this.settings = _wpmejsSettings;
+				this.settings = _.clone( _wpmejsSettings );
 			}
 			this.settings.success = this.bindPlayer;
 			this.setPlayer();
@@ -59,9 +68,7 @@
 				this.settings.success = this.bindResetPlayer;
 			}
 
-			/**
-			 * This is also our bridge to the outside world
-			 */
+			// This is also our bridge to the outside world.
 			this.player = new MediaElementPlayer( this.playerNode.get(0), this.settings );
 		},
 
@@ -73,13 +80,15 @@
 		},
 
 		renderCurrent : function () {
-			var dimensions, defaultImage = 'wp-includes/images/media/video.png';
+			var dimensions, defaultImage = 'wp-includes/images/media/video.svg';
 			if ( 'video' === this.data.type ) {
 				if ( this.data.images && this.current.get( 'image' ) && -1 === this.current.get( 'image' ).src.indexOf( defaultImage ) ) {
 					this.playerNode.attr( 'poster', this.current.get( 'image' ).src );
 				}
-				dimensions = this.current.get( 'dimensions' ).resized;
-				this.playerNode.attr( dimensions );
+				dimensions = this.current.get( 'dimensions' );
+				if ( dimensions && dimensions.resized ) {
+					this.playerNode.attr( dimensions.resized );
+				}
 			} else {
 				if ( ! this.data.images ) {
 					this.current.set( 'image', false );
@@ -144,7 +153,7 @@
 
 			if ( last !== current ) {
 				this.setPlayer( true );
-			} else if ( this.isCompatibleSrc() ) {
+			} else {
 				this.playerNode.attr( 'src', this.current.get( 'src' ) );
 				this.playCurrentSrc();
 			}
@@ -164,11 +173,32 @@
 		}
 	});
 
-    $(document).ready(function () {
-		$('.wp-playlist').each( function() {
-			return new WPPlaylistView({ el: this });
+	/**
+	 * Initialize media playlists in the document.
+	 *
+	 * Only initializes new playlists not previously-initialized.
+	 *
+	 * @since 4.9.3
+	 * @return {void}
+	 */
+	function initialize() {
+		$( '.wp-playlist:not(:has(.mejs-container))' ).each( function() {
+			new WPPlaylistView( { el: this } );
 		} );
-    });
+	}
+
+	/**
+	 * Expose the API publicly on window.wp.playlist.
+	 *
+	 * @namespace wp.playlist
+	 * @since 4.9.3
+	 * @type {object}
+	 */
+	window.wp.playlist = {
+		initialize: initialize
+	};
+
+	$( document ).ready( initialize );
 
 	window.WPPlaylistView = WPPlaylistView;
 

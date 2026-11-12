@@ -20,15 +20,25 @@
 		return;
 	}
 
+	// Assign an ID for the default page list if no menu is set as Primary.
+	if ( ! menu.id ) {
+		menu.id = 'twentytwelve-page-list-menu';
+	}
+
+	button.setAttribute( 'aria-controls', menu.id );
+	button.setAttribute( 'aria-expanded', 'false' );
+
 	button.onclick = function() {
 		if ( -1 === menu.className.indexOf( 'nav-menu' ) ) {
 			menu.className = 'nav-menu';
 		}
 
 		if ( -1 !== button.className.indexOf( 'toggled-on' ) ) {
+			button.setAttribute( 'aria-expanded', 'false' );
 			button.className = button.className.replace( ' toggled-on', '' );
 			menu.className = menu.className.replace( ' toggled-on', '' );
 		} else {
+			button.setAttribute( 'aria-expanded', 'true' );
 			button.className += ' toggled-on';
 			menu.className += ' toggled-on';
 		}
@@ -42,7 +52,7 @@
 	} );
 
   if ( 'ontouchstart' in window ) {
-    $( '.menu-item-has-children > a' ).on( 'touchstart.twentytwelve', function( e ) {
+    $('body').on( 'touchstart.twentytwelve',  '.menu-item-has-children > a, .page_item_has_children > a', function( e ) {
       var el = $( this ).parent( 'li' );
 
       if ( ! el.hasClass( 'focus' ) ) {

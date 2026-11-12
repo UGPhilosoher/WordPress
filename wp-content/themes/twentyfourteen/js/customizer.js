@@ -1,7 +1,7 @@
 /**
- * Twenty Fourteen Theme Customizer enhancements for a better user experience.
+ * Twenty Fourteen Customizer enhancements for a better user experience.
  *
- * Contains handlers to make Theme Customizer preview reload changes asynchronously.
+ * Contains handlers to make Customizer preview reload changes asynchronously.
  */
 ( function( $ ) {
 	// Site title and description.
@@ -20,12 +20,12 @@
 		value.bind( function( to ) {
 			if ( 'blank' === to ) {
 				$( '.site-title, .site-description' ).css( {
-					'clip': 'rect(1px, 1px, 1px, 1px)',
+					'clip-path': 'inset(50%)',
 					'position': 'absolute'
 				} );
 			} else {
 				$( '.site-title,  .site-description' ).css( {
-					'clip': 'auto',
+					'clip-path': 'none',
 					'position': 'static'
 				} );
 
